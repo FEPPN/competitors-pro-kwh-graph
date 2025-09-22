@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>TRVE (Base) vs Prix moyen concurrents — Offres Pro 9 kVA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body{margin:0;overflow:hidden;background:#fff;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;justify-content:center;padding:40px 16px;}
+    .chart-wrapper{background:transparent;border-radius:0;box-shadow:none;padding:0;}
+    h1{margin:0 0 14px;text-align:center;font-size:22px;font-weight:600;color:#0b0f19;}
+    .legend-note{margin:2px 0 12px;text-align:center;color:#64748b;font-size:13px;}
+    canvas{width:100% !important;height:auto !important;}
+  </style>
+</head>
+<body>
+  <div class="chart-wrapper">
+    <h1>Évolution du prix du kWh — TRVE (Base) vs Moyenne marché PRO</h1>
+    <div class="legend-note">Profil professionnel • Base 9 kVA • Unités : €/kWh <strong>TTC</strong></div>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <script>
+    const trveUrl = "https://raw.githubusercontent.com/FEPPN/graph_historical_TRVE/main/data.json"; // BASE = AVG
+    const competitorsUrl = "https://raw.githubusercontent.com/feppn/competitors-base-kwh-graph/main/data_competitors_pro.json";
+
+    const ymKey = d => { const dt=new Date(d); return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0"); };
+    const ymToLabel = k => { const [y,m]=k.split("-"); return new Date(+y,+m-1,1).toLocaleDateString("fr-FR",{year:"numeric",month:"2-digit"}); };
+
+    Promise.all([
+      fetch(trveUrl+"?v="+Date.now(),{cache:"no-store"}).then(r=>r.json()),
+      fetch(competitorsUrl+"?v="+Date.now(),{cache:"no-store"}).then(r=>r.json())
+    ])
+    .then(([trveRows, compRows])=>{
+      // TRVE: on prend uniquement AVG (BASE)
+      const trveIdx = {};
+      trveRows.filter(r=>r.Date && typeof r.AVG==="number").forEach(r=>{ trveIdx[ymKey(r.Date)] = r.AVG; });
+
+      // Concurrents: tout le fichier
+      const compIdx = {};
+      (compRows||[]).forEach(r=>{
+        const v = (typeof r.CompetitorAVG==="number") ? r.CompetitorAVG : Number(String(r.CompetitorAVG).replace(",",".")); 
+        if(!Number.isNaN(v)) compIdx[ymKey(r.Date)] = v;
+      });
+
+      // Union des mois pour tout afficher
+      const months = Array.from(new Set([...Object.keys(trveIdx),...Object.keys(compIdx)])).sort();
+      const labels   = months.map(ymToLabel);
+      const trveVals = months.map(k => (k in trveIdx ? trveIdx[k] : null));
+      const compVals = months.map(k => (k in compIdx ? compIdx[k] : null));
+
+      const ctx = document.getElementById("chart").getContext("2d");
+
+      const gTrve = ctx.createLinearGradient(0,0,0,300);
+      gTrve.addColorStop(0,"rgba(90, 82, 255, 0.22)");
+      gTrve.addColorStop(1,"rgba(90, 82, 255, 0.00)");
+
+      new Chart(ctx,{
+        type:'line',
+        data:{
+          labels,
+          datasets:[
+            {
+              label:"TRVE – Tarif réglementé (Base 9 kVA)",
+              data: trveVals,
+              borderColor:"#5a52ff",
+              backgroundColor:gTrve,
+              borderWidth:1.6,
+              pointRadius:0,
+              spanGaps:true,
+              stepped:"before",
+              tension:0,
+              fill:true
+            },
+            {
+              label:"Prix moyen marché PRO (Engie / TotalEnergies / Plénitude)",
+              data: compVals,
+              borderColor:"#334155",
+              backgroundColor:"transparent",
+              borderWidth:1.6,
+              borderDash:[6,4],
+              pointRadius:0,
+              spanGaps:true,
+              stepped:false,
+              tension:0.25,
+              fill:false
+            }
+          ]
+        },
+        options:{
+          responsive:true,
+          interaction:{ mode:'nearest', intersect:false },
+          plugins:{
+            legend:{
+              position:"bottom",
+              labels:{ color:"#1f2937", font:{ size:13, weight:"600" } }
+            },
+            tooltip:{
+              backgroundColor:"#fff", borderColor:"#e5e7eb", borderWidth:1,
+              titleColor:"#111827", bodyColor:"#4b5563",
+              titleFont:{ weight:'700' }, bodyFont:{ weight:'500' },
+              padding:10, cornerRadius:10,
+              callbacks:{
+                label:(ctx)=>`${ctx.dataset.label} : ${typeof ctx.parsed.y==="number"?ctx.parsed.y.toFixed(4)+" € / kWh TTC":"—"}`
+              }
+            }
+          },
+          scales:{
+            y:{ ticks:{ color:"#6b7280", callback:v=>`${Number(v).toFixed(3)} €` }, grid:{ color:"rgba(0,0,0,0.06)" }, border:{ display:false } },
+            x:{ offset:true, ticks:{ color:"#6b7280", maxRotation:0, autoSkip:true, maxTicksLimit:12 }, grid:{ display:false }, border:{ display:false } }
+          }
+        }
+      });
+    })
+    .catch(err=>{
+      console.error(err);
+      document.querySelector(".chart-wrapper").insertAdjacentHTML("beforeend",
+        `<p style="margin-top:10px;color:#ef4444;text-align:center">Erreur de chargement des données.</p>`);
+    });
+  </script>
+</body>
+</html>
