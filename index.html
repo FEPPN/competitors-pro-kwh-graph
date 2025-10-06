@@ -35,14 +35,22 @@
     .then(([trveRows, compRows])=>{
       // TRVE: on prend uniquement AVG (BASE)
       const trveIdx = {};
-      trveRows.filter(r=>r.Date && typeof r.AVG==="number").forEach(r=>{ trveIdx[ymKey(r.Date)] = r.AVG; });
+      (trveRows||[])
+        .filter(r=>r.Date && typeof r.AVG==="number")
+        .forEach(r=>{ trveIdx[ymKey(r.Date)] = r.AVG; });
 
-      // Concurrents: tout le fichier
+      // Concurrents: tout le fichier (convertit string -> number si besoin)
       const compIdx = {};
       (compRows||[]).forEach(r=>{
-        const v = (typeof r.CompetitorAVG==="number") ? r.CompetitorAVG : Number(String(r.CompetitorAVG).replace(",",".")); 
-        if(!Number.isNaN(v)) compIdx[ymKey(r.Date)] = v;
+        const v = (typeof r.CompetitorAVG==="number") ? r.CompetitorAVG : Number(String(r.CompetitorAVG).replace(",","."));
+        if(!Number.isNaN(v) && r.Date) compIdx[ymKey(r.Date)] = v;
       });
+
+      // Union des mois pour tout afficher puis filtre >= juillet 2024
+      let months = Array.from(new Set([...Object.keys(trveIdx), ...Object.keys(compIdx)])).sort();
+      const START_AT = "2024-01"; // YYYY-MM
+      months = months.filter(k => k >= START_AT);
+
 
       // Union des mois pour tout afficher
       const months = Array.from(new Set([...Object.keys(trveIdx),...Object.keys(compIdx)])).sort();
@@ -69,12 +77,12 @@
               borderWidth:1.6,
               pointRadius:0,
               spanGaps:true,
-              stepped:"before",
-              tension:0,
-              fill:true
+              stepped:false,
+              tension:0.25,
+              fill:false
             },
             {
-              label:"Prix moyen marché PRO (Engie / TotalEnergies / Plénitude)",
+              label:"Prix moyen marché PRO (Engie / TotalEnergies / OHM Énergie / Primeo Énergie)",
               data: compVals,
               borderColor:"#334155",
               backgroundColor:"transparent",
