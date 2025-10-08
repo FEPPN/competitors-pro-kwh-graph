@@ -73,7 +73,7 @@
       // --- Concurrents : alignés sur les mêmes months ---
       const compIdx = {};
       (compRows||[]).forEach(r=>{
-        const v = (typeof r.CompetitorAVG_BASE==="number") ? r.CompetitorAVG : Number(String(r.CompetitorAVG).replace(",","."));
+        const v = (typeof r.CompetitorAVG_BASE==="number") ? r.CompetitorAVG_BASE : Number(String(r.CompetitorAVG_BASE).replace(",","."));
         if(!Number.isNaN(v) && r.Date) compIdx[ymKey(r.Date)] = v;
       });
       const compVals = months.map(k => (k in compIdx ? compIdx[k] : null));
