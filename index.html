@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>TRVE (Base) vs Prix moyen concurrents — Offres Pro 9 kVA</title>
+  <title>TRVE vs Offres de marché — Base 36 kVA</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -16,44 +16,66 @@
 </head>
 <body>
   <div class="chart-wrapper">
-    <h1>Évolution du prix du kWh — TRVE (Base) vs Moyenne marché PRO</h1>
-    <div class="legend-note">Profil professionnel • Base 9 kVA • Unités : €/kWh <strong>TTC</strong></div>
+    <h1>Évolution du prix du kWh — TRVE vs Offres de marché</h1>
+    <div class="legend-note">Profil professionnel • Base 36 kVA • Unités : €/kWh <strong>TTC</strong></div>
     <canvas id="chart"></canvas>
   </div>
 
   <script>
-    const trveUrl = "https://raw.githubusercontent.com/FEPPN/graph_historical_TRVE/main/data.json"; // BASE = AVG
-    const competitorsUrl = "https://raw.githubusercontent.com/FEPPN/competitors-pro-kwh-graph/main/data_competitors_pro.json";
-    
+    const trveUrl = "https://raw.githubusercontent.com/FEPPN/graph_historical_TRVE/main/data.json";
+    const competitorsUrl = "https://raw.githubusercontent.com/feppn/competitors-pro-kwh-graph/main/data_competitors_pro.json";
+
+    // Fenêtre temporelle stricte demandée
+    const START_AT = "2024-07"; // Juillet 2024
+    const END_AT   = "2025-10"; // Octobre 2025
 
     const ymKey = d => { const dt=new Date(d); return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0"); };
     const ymToLabel = k => { const [y,m]=k.split("-"); return new Date(+y,+m-1,1).toLocaleDateString("fr-FR",{year:"numeric",month:"2-digit"}); };
+
+    // Génère la liste continue des AAAA-MM entre START_AT et END_AT (inclus)
+    function monthRange(startYm, endYm){
+      const [sy, sm] = startYm.split("-").map(Number);
+      const [ey, em] = endYm.split("-").map(Number);
+      const res = [];
+      let y = sy, m = sm;
+      while (y < ey || (y === ey && m <= em)) {
+        res.push(y + "-" + String(m).padStart(2,"0"));
+        m++; if (m > 12) { m = 1; y++; }
+      }
+      return res;
+    }
 
     Promise.all([
       fetch(trveUrl+"?v="+Date.now(),{cache:"no-store"}).then(r=>r.json()),
       fetch(competitorsUrl+"?v="+Date.now(),{cache:"no-store"}).then(r=>r.json())
     ])
     .then(([trveRows, compRows])=>{
-      // TRVE: on prend uniquement AVG (BASE)
-      const trveIdx = {};
-      (trveRows||[])
-        .filter(r=>r.Date && typeof r.AVG==="number")
-        .forEach(r=>{ trveIdx[ymKey(r.Date)] = r.AVG; });
+      // --- TRVE : points ponctuels -> série mensuelle (carry-forward) ---
+      const trvePoints = (trveRows || [])
+        .filter(r => r.Date && (typeof r.BASE === "number" || typeof r.AVG === "number"))
+        .map(r => [ymKey(r.Date), (typeof r.BASE === "number") ? r.BASE : r.AVG])
+        .sort((a,b) => a[0].localeCompare(b[0]));
 
-      // Concurrents: tout le fichier (convertit string -> number si besoin)
+      const months = monthRange(START_AT, END_AT);
+
+      // Dernière valeur connue <= mois k
+      const valueAtMonth = (k) => {
+        let last = null;
+        for (const [kk, vv] of trvePoints) {
+          if (kk <= k) last = vv; else break;
+        }
+        return last;
+      };
+
+      const labels   = months.map(ymToLabel);
+      const trveVals = months.map(valueAtMonth);
+
+      // --- Concurrents : alignés sur les mêmes months ---
       const compIdx = {};
       (compRows||[]).forEach(r=>{
         const v = (typeof r.CompetitorAVG==="number") ? r.CompetitorAVG : Number(String(r.CompetitorAVG).replace(",","."));
         if(!Number.isNaN(v) && r.Date) compIdx[ymKey(r.Date)] = v;
       });
-
-      // Union des mois pour tout afficher puis filtre >= janvier 2024
-      let months = Array.from(new Set([...Object.keys(trveIdx), ...Object.keys(compIdx)])).sort();
-      const START_AT = "2024-01"; // YYYY-MM
-      months = months.filter(k => k >= START_AT);
-
-      const labels   = months.map(ymToLabel);
-      const trveVals = months.map(k => (k in trveIdx ? trveIdx[k] : null));
       const compVals = months.map(k => (k in compIdx ? compIdx[k] : null));
 
       const ctx = document.getElementById("chart").getContext("2d");
@@ -68,19 +90,19 @@
           labels,
           datasets:[
             {
-              label:"TRVE – Tarif réglementé (Base 9 kVA)",
+              label:"TRVE – Tarif réglementé (Base 36 kVA)",
               data: trveVals,
               borderColor:"#5a52ff",
               backgroundColor:gTrve,
               borderWidth:1.6,
               pointRadius:0,
               spanGaps:true,
-              stepped:false,
-              tension:0.25,
+              stepped:'before',   // TRVE en escalier
+              tension:0,
               fill:false
             },
             {
-              label:"Prix moyen marché PRO (Engie / TotalEnergies / OHM Énergie / Primeo Énergie)",
+              label:"Prix moyen offres de marché (Engie • TotalEnergies • OHM Énergie • Primeo Énergie)",
               data: compVals,
               borderColor:"#334155",
               backgroundColor:"transparent",
@@ -108,13 +130,30 @@
               titleFont:{ weight:'700' }, bodyFont:{ weight:'500' },
               padding:10, cornerRadius:10,
               callbacks:{
-                label:(ctx)=>`${ctx.dataset.label} : ${typeof ctx.parsed.y==="number"?ctx.parsed.y.toFixed(4)+" € / kWh TTC":"—"}`
+                label:(ctx)=>{
+                  const y = ctx.parsed.y;
+                  if (typeof y !== "number") return `${ctx.dataset.label} : —`;
+                  return `${ctx.dataset.label} : ${y.toFixed(4).replace('.',',')} € / kWh TTC`;
+                }
               }
             }
           },
           scales:{
-            y:{ ticks:{ color:"#6b7280", callback:v=>`${Number(v).toFixed(3)} €` }, grid:{ color:"rgba(0,0,0,0.06)" }, border:{ display:false } },
-            x:{ offset:true, ticks:{ color:"#6b7280", maxRotation:0, autoSkip:true, maxTicksLimit:12 }, grid:{ display:false }, border:{ display:false } }
+            y:{
+              min: 0.1, // démarre à 0,100 €
+              ticks:{
+                color:"#6b7280",
+                callback:v=>`${Number(v).toFixed(3).replace('.',',')} €`
+              },
+              grid:{ color:"rgba(0,0,0,0.06)" },
+              border:{ display:false }
+            },
+            x:{
+              offset:true,
+              ticks:{ color:"#6b7280", maxRotation:0, autoSkip:true, maxTicksLimit:12 },
+              grid:{ display:false },
+              border:{ display:false }
+            }
           }
         }
       });
