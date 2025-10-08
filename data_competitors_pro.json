@@ -1,49 +1,49 @@
 [{
   "Date": "2024-07-01",
-  "CompetitorAVG": "0.208256"
+  "CompetitorAVG_BASE": "0.208256"
 }, {
   "Date": "2024-08-01",
-  "CompetitorAVG": "0.204947"
+  "CompetitorAVG_BASE": "0.204947"
 }, {
   "Date": "2024-09-01",
-  "CompetitorAVG": "0.2151"
+  "CompetitorAVG_BASE": "0.2151"
 }, {
   "Date": "2024-10-01",
-  "CompetitorAVG": "0.213641"
+  "CompetitorAVG_BASE": "0.213641"
 }, {
   "Date": "2024-11-01",
-  "CompetitorAVG": "0.211054"
+  "CompetitorAVG_BASE": "0.211054"
 }, {
   "Date": "2024-12-01",
-  "CompetitorAVG": "0.204667"
+  "CompetitorAVG_BASE": "0.204667"
 }, {
   "Date": "2025-01-01",
-  "CompetitorAVG": "0.20735"
+  "CompetitorAVG_BASE": "0.20735"
 }, {
   "Date": "2025-02-01",
-  "CompetitorAVG": "0.21957"
+  "CompetitorAVG_BASE": "0.21957"
 }, {
   "Date": "2025-03-01",
-  "CompetitorAVG": "0.214161"
+  "CompetitorAVG_BASE": "0.214161"
 }, {
   "Date": "2025-04-01",
-  "CompetitorAVG": "0.211221"
+  "CompetitorAVG_BASE": "0.211221"
 }, {
   "Date": "2025-05-01",
-  "CompetitorAVG": "0.208597"
+  "CompetitorAVG_BASE": "0.208597"
 }, {
   "Date": "2025-06-01",
-  "CompetitorAVG": "0.208972"
+  "CompetitorAVG_BASE": "0.208972"
 }, {
   "Date": "2025-07-01",
-  "CompetitorAVG": "0.21335"
+  "CompetitorAVG_BASE": "0.21335"
 }, {
   "Date": "2025-08-01",
-  "CompetitorAVG": "0.210683"
+  "CompetitorAVG_BASE": "0.210683"
 }, {
   "Date": "2025-09-01",
-  "CompetitorAVG": "0.212524"
+  "CompetitorAVG_BASE": "0.212526"
 }, {
   "Date": "2025-10-01",
-  "CompetitorAVG": "0.210386"
+  "CompetitorAVG_BASE": "0.210386"
 }]
